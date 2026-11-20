@@ -1,4 +1,4 @@
-function Entete() {
+function Entete({titre, sousTitre}) {
   return (
     <header className="entete">
       <h1>Mes tâches</h1>
