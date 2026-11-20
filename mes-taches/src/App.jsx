@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Carte from './components/Carte.jsx'
 import Compteur from './components/Compteur.jsx'
 import Entete from './components/Entete.jsx'
+import FormulaireAjout from './components/FormulaireAjout.jsx'
 import ListeTaches from './components/ListeTaches.jsx'
 import Pied from './components/Pied.jsx'
 
@@ -15,6 +16,11 @@ const auteur = "Mohamed Ait El Kadi"
 
 function App() {
   const [taches, setTaches] = useState(TACHES_INITIALES)
+
+  function ajouterTache(titre) {
+    const nouvelleTache = { id: crypto.randomUUID(), titre, terminee: false }
+    setTaches((tachesActuelles) => [...tachesActuelles, nouvelleTache])
+  }
 
   function basculerTache(id) {
     setTaches(
@@ -33,6 +39,9 @@ function App() {
       <Entete />
       <Carte titre="Compteur">
         <Compteur />
+      </Carte>
+      <Carte titre="Ajouter une tâche">
+        <FormulaireAjout onAjouter={ajouterTache} />
       </Carte>
       <Carte titre="Ma liste">
         <ListeTaches
