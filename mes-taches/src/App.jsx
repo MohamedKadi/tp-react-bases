@@ -8,20 +8,42 @@ import ListeTaches from './components/ListeTaches.jsx'
 import Pied from './components/Pied.jsx'
 
 const auteur = "Mohamed Ait El Kadi"
+const CLE_SAUVEGARDE = 'mes-taches'
 
 function App() {
   const [taches, setTaches] = useState([])
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState(null)
+  const [horlogeVisible, setHorlogeVisible] = useState(true)
   const restantes = taches.filter((tache) => !tache.terminee).length
+  const terminees = taches.length - restantes
 
   useEffect(() => {
     let annule = false
 
-    fetch('/taches.json')
-      .then((reponse) => {
-        if (!reponse.ok) throw new Error(`Erreur HTTP ${reponse.status}`)
-        return reponse.json()
+    Promise.resolve()
+      .then(() => {
+        try {
+          const sauvegarde = JSON.parse(localStorage.getItem(CLE_SAUVEGARDE))
+          if (
+            Array.isArray(sauvegarde) &&
+            sauvegarde.every((tache) =>
+              tache !== null &&
+              (typeof tache.id === 'number' || typeof tache.id === 'string') &&
+              typeof tache.titre === 'string' &&
+              typeof tache.terminee === 'boolean',
+            )
+          ) {
+            return sauvegarde
+          }
+        } catch (err) {
+          console.warn('Sauvegarde locale illisible : chargement du fichier JSON.', err)
+        }
+
+        return fetch('/taches.json').then((reponse) => {
+          if (!reponse.ok) throw new Error(`Erreur HTTP ${reponse.status}`)
+          return reponse.json()
+        })
       })
       .then((donnees) => {
         if (!annule) setTaches(donnees)
@@ -37,6 +59,17 @@ function App() {
       annule = true
     }
   }, [])
+
+  useEffect(() => {
+    // Attendre le chargement évite d'écraser la sauvegarde avec le tableau vide initial.
+    if (chargement || erreur) return
+
+    try {
+      localStorage.setItem(CLE_SAUVEGARDE, JSON.stringify(taches))
+    } catch (err) {
+      console.warn('Impossible de sauvegarder les tâches localement.', err)
+    }
+  }, [taches, chargement, erreur])
 
   useEffect(() => {
     document.title = `(${restantes}) Mes tâches`
@@ -59,19 +92,50 @@ function App() {
     setTaches(taches.filter((tache) => tache.id !== id))
   }
 
+  function supprimerTerminees() {
+    setTaches((tachesActuelles) => tachesActuelles.filter((tache) => !tache.terminee))
+  }
+
+  function modifierTache(id, titre) {
+    const titreNettoye = titre.trim()
+    if (titreNettoye === '') return
+
+    setTaches((tachesActuelles) =>
+      tachesActuelles.map((tache) =>
+        tache.id === id ? { ...tache, titre: titreNettoye } : tache,
+      ),
+    )
+  }
+
   return (
     <div className="app">
       <Entete />
       <Carte titre="Heure actuelle">
-        <Horloge />
+        <button
+          onClick={() => setHorlogeVisible((visible) => !visible)}
+          aria-expanded={horlogeVisible}
+        >
+          {horlogeVisible ? "Masquer l'horloge" : "Afficher l'horloge"}
+        </button>
+        {horlogeVisible && <Horloge />}
       </Carte>
       <Carte titre="Compteur">
         <Compteur />
       </Carte>
       <Carte titre="Ajouter une tâche">
-        <FormulaireAjout onAjouter={ajouterTache} />
+        <FormulaireAjout
+          onAjouter={ajouterTache}
+          disabled={chargement || Boolean(erreur)}
+        />
       </Carte>
       <Carte titre="Ma liste">
+        <button
+          className="danger"
+          disabled={chargement || Boolean(erreur) || terminees === 0}
+          onClick={supprimerTerminees}
+        >
+          Supprimer les tâches terminées
+        </button>
         {chargement ? (
           <p className="vide">Chargement des tâches…</p>
         ) : erreur ? (
@@ -81,6 +145,7 @@ function App() {
             taches={taches}
             onBasculer={basculerTache}
             onSupprimer={supprimerTache}
+            onModifier={modifierTache}
           />
         )}
       </Carte>

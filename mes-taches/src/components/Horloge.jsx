@@ -8,7 +8,10 @@ function Horloge() {
       setMaintenant(new Date())
     }, 1000)
 
-    return () => clearInterval(intervalle)
+    return () => {
+      clearInterval(intervalle)
+      console.log('Horloge : nettoyage du minuteur')
+    }
   }, [])
 
   return <p className="horloge">{maintenant.toLocaleTimeString('fr-FR')}</p>
